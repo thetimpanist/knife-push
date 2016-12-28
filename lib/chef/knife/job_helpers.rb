@@ -110,6 +110,33 @@ class Chef
         job
       end
 
+      def get_completed_job(config, job_uri)
+        previous_state = "Initialized."
+        begin
+            sleep(config[:pole_interval].to_f)
+            putc(".")
+            job = rest.get_rest(job_uri)
+            finished, state = status_string(job)
+            if state != previous_state
+                puts "\n#{state}: #{job_id_from_uri(job_uri)}"
+                previous_state = state
+            end
+        end until finished
+        return job
+      end
+
+      def run_starter(config, job_json)
+        job_json["run_timeout"] ||= config[:run_timeout].to_i if config[:run_timeout]
+
+        result = rest.post_rest("pushy/jobs", job_json)
+        job_uri = result["uri"]
+        return job_uri
+      end
+
+      def job_id_from_uri(uri)
+        return uri[-32, 32]
+      end
+
       def file_helper(file_name)
         if file_name.nil?
           ui.error "No file specified."
