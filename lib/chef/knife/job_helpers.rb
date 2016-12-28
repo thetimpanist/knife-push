@@ -114,13 +114,13 @@ class Chef
         previous_state = "Initialized."
         begin
             sleep(config[:pole_interval].to_f)
-            putc(".")
             job = rest.get_rest(job_uri)
             finished, state = status_string(job)
             if state != previous_state
                 puts "\n#{state}: #{job_id_from_uri(job_uri)}"
                 previous_state = state
             end
+            putc(".")
         end until finished
         return job
       end
