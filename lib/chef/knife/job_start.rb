@@ -136,7 +136,7 @@ class Chef
 
         output(job)
 
-        exit(status_code(job))
+        return status_code(job)
       end
 
       private
