@@ -37,9 +37,16 @@ class Chef
              :description => "Maximum time the job will be allowed to run (in seconds)."
 
       option :interval,
-             :long => "--interval",
+             :short => "-i INTERVAL",
+             :long => "--interval INTERVAL",
              :default => 2.0,
              :description => "The frequency (in seconds) at which jobs are started for each node"
+
+      option :batch,
+             :short => "-b BATCH",
+             :long => "--batch BATCH",
+             :default => 1,
+             :description => "Number of nodes to start jobs per interval"
 
       def run
         job_name = @name_args[0]
@@ -50,16 +57,17 @@ class Chef
         end
 
         @node_names = process_search(config[:search], name_args[1, @name_args.length - 1])
+        batches = @node_names.each_slice(config[:interval].to_i).to_a
 
         job_json = {"command" => job_name}
         job_json["quorum"] = get_quorum(config[:quorum], @node_names.length)
 
         job_uris = []
-        @node_names.each do |node_name|
-          job_json[:nodes] = [node_name]
+        batches.each do |node_batch|
+          job_json[:nodes] = node_batch
           job_uris.push(run_starter(config, job_json))
-          puts "Started #{node_name}: #{job_id_from_uri(job_uris.last)}"
-          sleep(config[:interval].to_f) if not node_name == @node_names.last
+          puts "\nStarted #{node_batch}: #{job_id_from_uri(job_uris.last)}"
+          sleep(config[:interval].to_f) if not node_batch == batches.last
         end
 
         jobs = []
