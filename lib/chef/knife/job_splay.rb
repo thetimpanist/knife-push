@@ -48,6 +48,12 @@ class Chef
              :default => 1,
              :description => "Number of nodes to start jobs per interval"
 
+      option :retry,
+             :long => "--retry",
+             :boolean => true,
+             :default => false,
+             :description => "Retry job on failed nodes upon completion"
+
       def run
         job_name = @name_args[0]
         if job_name.nil?
@@ -62,12 +68,25 @@ class Chef
         job_json = {"command" => job_name}
         job_json["quorum"] = get_quorum(config[:quorum], @node_names.length)
 
+        jobs = run_jobs(batches, job_json)
+
+        if config[:retry]
+          failures = jobs.map{ |job| job["nodes"]["failed"] }.compact.flatten
+          batches = failures.each_slice(config[:interval].to_i).to_a
+          puts "Retrying Failed Nodes."
+          jobs = run_jobs(batches, job_json)
+        end
+
+        return jobs.max_by{ |job| status_code(job) }
+      end
+
+      def run_jobs(node_batches, job_json)
         job_uris = []
-        batches.each do |node_batch|
+        node_batches.each do |node_batch|
           job_json[:nodes] = node_batch
           job_uris.push(run_starter(config, job_json))
           puts "\nStarted #{node_batch}: #{job_id_from_uri(job_uris.last)}"
-          sleep(config[:interval].to_f) if not node_batch == batches.last
+          sleep(config[:interval].to_f) if not node_batch == node_batches.last
         end
 
         jobs = []
@@ -77,8 +96,7 @@ class Chef
 
         jobs.each{ |job| output(job) }
 
-        status = jobs.max_by{ |job| status_code(job) }
-        return status
+        return jobs
       end
 
       private
