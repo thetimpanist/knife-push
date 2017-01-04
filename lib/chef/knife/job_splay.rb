@@ -71,7 +71,7 @@ class Chef
 
         if config[:retry]
           failures = jobs.map{ |job| job["nodes"]["failed"] }.compact.flatten
-          batches = failures.each_slice(config[:interval].to_i).to_a
+          batches = failures.each_slice(config[:batch].to_i).to_a
           puts "Retrying Failed Nodes."
           jobs = run_jobs(batches, job_json)
         end
