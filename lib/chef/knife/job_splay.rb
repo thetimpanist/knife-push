@@ -1,5 +1,5 @@
-# require "chef/knife/job_helpers"
-require "./job_helpers"
+require "chef/knife/job_helpers"
+# require "./job_helpers"
 
 class Chef
   class Knife
@@ -63,10 +63,9 @@ class Chef
         end
 
         @node_names = process_search(config[:search], name_args[1, @name_args.length - 1])
-        batches = @node_names.each_slice(config[:interval].to_i).to_a
+        batches = @node_names.each_slice(config[:batch].to_i).to_a
 
         job_json = {"command" => job_name}
-        job_json["quorum"] = get_quorum(config[:quorum], @node_names.length)
 
         jobs = run_jobs(batches, job_json)
 
@@ -84,6 +83,7 @@ class Chef
         job_uris = []
         node_batches.each do |node_batch|
           job_json[:nodes] = node_batch
+          job_json["quorum"] = get_quorum(config[:quorum], node_batch.length)
           job_uris.push(run_starter(config, job_json))
           puts "\nStarted #{node_batch}: #{job_id_from_uri(job_uris.last)}"
           sleep(config[:interval].to_f) if not node_batch == node_batches.last
