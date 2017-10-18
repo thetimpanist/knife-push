@@ -8,7 +8,6 @@ class Chef
       include JobHelpers
 
       deps do
-        require "chef/rest"
         require "chef/node"
         require "chef/search/query"
       end
@@ -70,13 +69,23 @@ class Chef
         jobs = run_jobs(batches, job_json)
 
         if config[:retry]
-          failures = jobs.map{ |job| job["nodes"]["failed"] }.compact.flatten
+          failures = set_failures(jobs)
           batches = failures.each_slice(config[:batch].to_i).to_a
           puts "Retrying Failed Nodes."
           jobs = run_jobs(batches, job_json)
         end
+        @failures = set_failures(jobs)
 
         return jobs.max_by{ |job| status_code(job) }
+      end
+
+      def set_failures(jobs)
+        failures = jobs.map{ |job| job["nodes"]["failed"] }.compact.flatten +
+          jobs.map{ |job| job["nodes"]["nacked"] }.compact.flatten
+      end
+
+      def get_failures
+        return @failures
       end
 
       def run_jobs(node_batches, job_json)
